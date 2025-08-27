@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
+
+import Navbar from "@/components/navigation/navbar";
 
 const inter = localFont({
   src: "./font/interVF.ttf",
@@ -30,12 +33,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       {/* Next.js will use favicon.png or favicon.ico from public directory automatically */}
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
       >
-        {children}
+       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <Navbar />
+         {children}
+       </ThemeProvider>
       </body>
     </html>
   );
