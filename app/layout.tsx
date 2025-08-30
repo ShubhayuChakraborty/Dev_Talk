@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
+import { ReactNode } from "react";
+
 import "./globals.css";
 
-import Navbar from "@/components/navigation/navbar";
+import { auth } from "@/auth";
+import { Toaster } from "@/components/ui/sonner";
+
+
 
 const inter = localFont({
   src: "./font/interVF.ttf",
@@ -27,22 +33,27 @@ export const metadata: Metadata = {
  }
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+const RootLayout = async ({children,}:{children:ReactNode}) => {
+
+  const session = await auth();
+
+
   return (
+  
     <html lang="en" suppressHydrationWarning>
       {/* Next.js will use favicon.png or favicon.ico from public directory automatically */}
+       <SessionProvider session={session}>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
       >
        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <Navbar />
+      
          {children}
        </ThemeProvider>
+       <Toaster />
       </body>
+      </SessionProvider>
     </html>
   );
 }
+export default RootLayout;

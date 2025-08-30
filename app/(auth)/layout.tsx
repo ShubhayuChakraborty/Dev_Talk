@@ -1,0 +1,33 @@
+import Image from "next/image";
+
+import SocialAuthForm from "@/components/forms/SocialAuthForm";
+
+
+
+const authlayout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-auth-light dark:bg-auth-dark bg-cover bg-center bg-no-repeat px-4 py-10">
+      <section className="light-border background-light800_dark200 shadow-light-100_dark100 min-w-full rounded-[10px]  border px-4 py-10 shadow-md sm:min-w-[520px] sm:px-8">
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="space-y-2.5">
+            <h1 className="h2-bold text-dark100_light900">Join <span className=" font-space-grotesk">Dev</span> <span className="text-primary-500 font-space-grotesk">Talk</span></h1>
+            <p className="paragraph-regular text-dark500_light400">
+              To get your qustions answered
+            </p>
+          </div>
+          <Image
+            src="/images/site-logo.svg"
+            alt="DevTalk Logo"
+            width={50}
+            height={50}
+            className="object-contain"
+          />
+        </div>
+        {children}
+        <SocialAuthForm />
+      </section>
+    </main>
+  );
+};
+
+export default authlayout;
