@@ -6,7 +6,7 @@ const Home = async () => {
   console.log(session);
   return (
     <>
-      <h1 className="h1-bold ">Home</h1>
+      <h1 className="h1-bold ">Welcome to the world of Devitt</h1>
 
       
 
