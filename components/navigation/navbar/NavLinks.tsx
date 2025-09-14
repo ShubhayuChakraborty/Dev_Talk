@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 
 const NavLinks = ({
   isMobileNav = false,
-  
 }: {
   isMobileNav?: boolean;
   userId?: string;
@@ -20,7 +19,8 @@ const NavLinks = ({
   const userId = 1;
   return (
     <>
-      {sidebarLinks.map((item) => {
+      {sidebarLinks.map((origItem) => {
+        const item = { ...origItem };
         const isActive =
           (pathname.includes(item.route) && item.route.length > 1) ||
           pathname === item.route;
@@ -41,13 +41,17 @@ const NavLinks = ({
               "flex items-center justify-start gap-4 bg-transparent p-4"
             )}
           >
-            <Image
-              src={item.imgURL}
-              alt={item.label}
-              width={20}
-              height={20}
-              className={cn(!isActive ? "invert-colors" : "")}
-            />
+            {item.imgURL ? (
+              <Image
+                src={item.imgURL}
+                alt={item.label}
+                width={20}
+                height={20}
+                className={cn(!isActive ? "invert-colors" : "")}
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-sm bg-gray-200" />
+            )}
             <p
               className={cn(
                 isActive ? "base-bold" : "base-medium",
