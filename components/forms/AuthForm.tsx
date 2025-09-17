@@ -10,7 +10,7 @@ import {
   useForm,
 } from "react-hook-form";
 import { toast } from "sonner";
-import { z, ZodType } from "zod";
+import { ZodType } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +23,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import ROUTES from "@/constants/routes";
-
-
 
 type ActionResponse = {
   success: boolean;
@@ -48,7 +46,9 @@ const AuthForm = <T extends FieldValues>({
   const router = useRouter();
 
   const form = useForm<T>({
-    resolver: zodResolver(schema),
+    // Casting schema to `any` avoids zod/react-hook-form generic incompatibilities
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema as any) as any,
     defaultValues: defaultValues as DefaultValues<T>,
   });
 
@@ -56,21 +56,15 @@ const AuthForm = <T extends FieldValues>({
     const result: ActionResponse = await onSubmit(data);
 
     if (result?.success) {
-      toast({
-        title: "Success",
-        description:
-          formType === "SIGN_IN"
-            ? "Signed in successfully"
-            : "Signed up successfully",
-      });
+      toast.success(
+        formType === "SIGN_IN"
+          ? "Signed in successfully"
+          : "Signed up successfully"
+      );
 
       router.push(ROUTES.HOME);
     } else {
-      toast({
-        title: `Error ${result?.status}`,
-        description: result?.error?.message,
-        variant: "destructive",
-      });
+      toast.error(result?.error?.message || `Error ${result?.status}`);
     }
   };
 

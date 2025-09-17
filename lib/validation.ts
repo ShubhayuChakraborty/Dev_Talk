@@ -1,19 +1,15 @@
-import { z } from "zod"
-
-
-
-
+import { z } from "zod";
 
 export const SignInSchema = z.object({
-    email: z
+  email: z
     .string()
-    .min(1,{ message: "Email is required" })
+    .min(1, { message: "Email is required" })
     .email({ message: "Please enter a valid email address" }),
-    
-    password: z
+
+  password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." })
-    .max(100, { message: "Password must be at most 100 characters." })
+    .max(100, { message: "Password must be at most 100 characters." }),
 });
 export const SignUpSchema = z.object({
   username: z
@@ -51,4 +47,24 @@ export const SignUpSchema = z.object({
     .regex(/[^a-zA-Z0-9]/, {
       message: "Password must contain at least one special character.",
     }),
+});
+
+export const AskQuestionSchema = z.object({
+  title: z
+    .string()
+    .min(10, { message: "Title must be at least 10 characters long." })
+    .max(100, { message: "Title cannot exceed 100 characters." }),
+  content: z
+    .string()
+    .min(20, { message: "Content must be at least 20 characters long." }),
+
+  tags: z
+    .array(
+      z
+        .string()
+        .min(1, { message: "Tag must be at least 1 character long." })
+        .max(30, { message: "Tag cannot exceed 30 characters." })
+    )
+    .min(1, { message: "Please select at least one tag." })
+    .max(3, { message: "You can select up to 3 tags." }),
 });
