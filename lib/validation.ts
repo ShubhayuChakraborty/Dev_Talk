@@ -68,3 +68,5 @@ export const AskQuestionSchema = z.object({
     .min(1, { message: "Please select at least one tag." })
     .max(3, { message: "You can select up to 3 tags." }),
 });
+
+export type AskQuestionFormValues = z.infer<typeof AskQuestionSchema>;

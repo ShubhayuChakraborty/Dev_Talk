@@ -1,11 +1,16 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
-import { useForm } from "react-hook-form";
+import { MDXEditorMethods } from "@mdxeditor/editor";
+import dynamic from "next/dynamic";
+import { useRef, type KeyboardEvent } from "react";
+import { useForm, type ControllerRenderProps } from "react-hook-form";
 
-import { AskQuestionSchema } from "@/lib/validation";
+import {
+  AskQuestionSchema,
+  type AskQuestionFormValues,
+} from "@/lib/validation";
 
-import TagCard from "../cards/TagCard";
+import { Button } from "../ui/button";
 import {
   Form,
   FormControl,
@@ -16,10 +21,48 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
-import { Button } from "../ui/button";
 
+const Editor = dynamic(() => import("@/components/editor"), {
+  // Make sure we turn SSR off
+  ssr: false,
+});
+
+const MAX_TAGS = 3;
+
+const handleInputKeyDown = (
+  event: KeyboardEvent<HTMLInputElement>,
+  field: ControllerRenderProps<AskQuestionFormValues, "tags">
+) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  event.preventDefault();
+  const newTag = event.currentTarget.value.trim();
+  if (!newTag) {
+    return;
+  }
+
+  const tags = field.value ?? [];
+  if (tags.includes(newTag) || tags.length >= MAX_TAGS) {
+    return;
+  }
+
+  field.onChange([...tags, newTag]);
+  event.currentTarget.value = "";
+};
+
+const handleTagRemove = (
+  tag: string,
+  field: ControllerRenderProps<AskQuestionFormValues, "tags">
+) => {
+  const tags = field.value ?? [];
+  field.onChange(tags.filter((existingTag) => existingTag !== tag));
+};
 
 const QuestionForm = () => {
+  const editorRef = useRef<MDXEditorMethods>(null);
+
   const form = useForm({
     resolver: zodResolver(AskQuestionSchema),
     defaultValues: {
@@ -57,7 +100,7 @@ const QuestionForm = () => {
             </FormItem>
           )}
         />
-          <FormField
+        <FormField
           control={form.control}
           name="content"
           render={({ field }) => (
@@ -67,7 +110,11 @@ const QuestionForm = () => {
                 <span className="text-primary-500">*</span>
               </FormLabel>
               <FormControl>
-               Editor
+                <Editor
+                  value={field.value}
+                  editorRef={editorRef}
+                  fieldChange={field.onChange}
+                />
               </FormControl>
               <FormDescription className="body-regular mt-2.5 text-light-500">
                 Introduce the problem and expand on what you&apos;ve put in the
@@ -80,48 +127,57 @@ const QuestionForm = () => {
         <FormField
           control={form.control}
           name="tags"
-          render={({ field }) => (
-            <FormItem className="flex w-full flex-col gap-3">
-              <FormLabel className="paragraph-semibold text-dark400_light800">
-                Tags <span className="text-primary-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <div>
-                  <Input
-                    className="paragraph-regular background-light700_dark300 light-border-2 text-dark300_light700 no-focus min-h-[56px] border"
-                    placeholder="Add tags..."
-                    onKeyDown={(e) => handleInputKeyDown(e, field)}
-                  />
-                  {field.value.length > 0 && (
-                    <div className="flex-start mt-2.5 flex-wrap gap-2.5">
-                      {field?.value?.map((tag: string) => (
-                        <TagCard
-                          key={tag}
-                          _id={tag}
-                          name={tag}
-                          compact
-                          remove
-                          isButton
-                          handleRemove={() => handleTagRemove(tag, field)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </FormControl>
-              <FormDescription className="body-regular mt-2.5 text-light-500">
-                Add up to 3 tags to describe what your question is about. You
-                need to press enter to add a tag.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+          render={({ field }) => {
+            const tags = field.value ?? [];
+            return (
+              <FormItem className="flex w-full flex-col gap-3">
+                <FormLabel className="paragraph-semibold text-dark400_light800">
+                  Tags <span className="text-primary-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <div>
+                    <Input
+                      className="paragraph-regular background-light700_dark300 light-border-2 text-dark300_light700 no-focus min-h-[56px] border"
+                      placeholder="Add tags..."
+                      onKeyDown={(e) => handleInputKeyDown(e, field)}
+                    />
+                    {tags.length > 0 && (
+                      <div className="flex-start mt-2.5 flex-wrap gap-2.5">
+                        {tags.map((tag) => (
+                          <div
+                            key={tag}
+                            className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                          >
+                            <span className="uppercase tracking-widest">
+                              {tag}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${tag}`}
+                              className="flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-xs text-slate-500 transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline-none focus-visible:ring focus-visible:ring-slate-300 focus-visible:ring-offset-1 dark:text-slate-200"
+                              onClick={() => handleTagRemove(tag, field)}
+                            >
+                              x
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormDescription className="body-regular mt-2.5 text-light-500">
+                  Add up to 3 tags to describe what your question is about. You
+                  need to press enter to add a tag.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
-        
+
         <div className="mt-16 flex justify-end">
           <Button
             type="submit"
-            
             className="primary-gradient w-fit !text-light-900"
           >
             Ask A Question
