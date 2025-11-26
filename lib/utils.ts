@@ -1,3 +1,4 @@
+import { techDescriptions } from "@/constants/techDescriptions";
 import { techMap } from "@/constants/techMap";
 
 // Utility function for className merging
@@ -11,6 +12,15 @@ export const getDeviconClassName = (techName: string) => {
   return techMap[normalizedTechName]
     ? `${techMap[normalizedTechName]} colored`
     : "devicon-devicon-plain";
+};
+
+export const getTechDescription = (techName: string) => {
+  const normalizedTechName = techName.replace(/[ .]/g, "").toLowerCase();
+
+  return (
+    techDescriptions[normalizedTechName] ||
+    `Learn more about ${techName} and related technologies.`
+  );
 };
 
 export const getTimestamp = (date: Date | string | number) => {

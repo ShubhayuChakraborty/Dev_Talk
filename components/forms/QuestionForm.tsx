@@ -1,15 +1,20 @@
 "use client";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MDXEditorMethods } from "@mdxeditor/editor";
+import { ReloadIcon } from "@radix-ui/react-icons";
 import dynamic from "next/dynamic";
-import { useRef, type KeyboardEvent } from "react";
-import { useForm, type ControllerRenderProps } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import React, { useRef, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
-import {
-  AskQuestionSchema,
-  type AskQuestionFormValues,
-} from "@/lib/validation";
+import ROUTES from "@/constants/routes";
+import { createQuestion, editQuestion } from "@/lib/actions/question.action";
+import { AskQuestionSchema } from "@/lib/validation";
 
+import TagCard from "../cards/TagCard";
 import { Button } from "../ui/button";
 import {
   Form,
@@ -23,55 +28,101 @@ import {
 import { Input } from "../ui/input";
 
 const Editor = dynamic(() => import("@/components/editor"), {
-  // Make sure we turn SSR off
   ssr: false,
 });
 
-const MAX_TAGS = 3;
+interface Params {
+  question?: Question;
+  isEdit?: boolean;
+}
 
-const handleInputKeyDown = (
-  event: KeyboardEvent<HTMLInputElement>,
-  field: ControllerRenderProps<AskQuestionFormValues, "tags">
-) => {
-  if (event.key !== "Enter") {
-    return;
-  }
-
-  event.preventDefault();
-  const newTag = event.currentTarget.value.trim();
-  if (!newTag) {
-    return;
-  }
-
-  const tags = field.value ?? [];
-  if (tags.includes(newTag) || tags.length >= MAX_TAGS) {
-    return;
-  }
-
-  field.onChange([...tags, newTag]);
-  event.currentTarget.value = "";
-};
-
-const handleTagRemove = (
-  tag: string,
-  field: ControllerRenderProps<AskQuestionFormValues, "tags">
-) => {
-  const tags = field.value ?? [];
-  field.onChange(tags.filter((existingTag) => existingTag !== tag));
-};
-
-const QuestionForm = () => {
+const QuestionForm = ({ question, isEdit = false }: Params) => {
+  const router = useRouter();
   const editorRef = useRef<MDXEditorMethods>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof AskQuestionSchema>>({
     resolver: zodResolver(AskQuestionSchema),
     defaultValues: {
-      title: "",
-      content: "",
-      tags: [],
+      title: question?.title || "",
+      content: question?.description || "",
+      tags: question?.tags.map((tag) => tag.name) || [],
     },
   });
-  const handleCreateQuestion = () => {};
+
+  const handleInputKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    field: { value: string[] }
+  ) => {
+    console.log(field, e);
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const tagInput = e.currentTarget.value.trim();
+
+      if (tagInput && tagInput.length < 15 && !field.value.includes(tagInput)) {
+        form.setValue("tags", [...field.value, tagInput]);
+        e.currentTarget.value = "";
+        form.clearErrors("tags");
+      } else if (tagInput.length > 15) {
+        form.setError("tags", {
+          type: "manual",
+          message: "Tag should be less than 15 characters",
+        });
+      } else if (field.value.includes(tagInput)) {
+        form.setError("tags", {
+          type: "manual",
+          message: "Tag already exists",
+        });
+      }
+    }
+  };
+
+  const handleTagRemove = (tag: string, field: { value: string[] }) => {
+    const newTags = field.value.filter((t) => t !== tag);
+
+    form.setValue("tags", newTags);
+
+    if (newTags.length === 0) {
+      form.setError("tags", {
+        type: "manual",
+        message: "Tags are required",
+      });
+    }
+  };
+
+  const handleCreateQuestion = async (
+    data: z.infer<typeof AskQuestionSchema>
+  ) => {
+    startTransition(async () => {
+      if (isEdit && question) {
+        const result = await editQuestion({
+          questionId: question?._id,
+          ...data,
+        });
+
+        if (result.success) {
+          toast.success("Question updated successfully");
+
+          if (result.data) router.push(ROUTES.QUESTION(result.data._id));
+        } else {
+          toast.error(result.error?.message || "Something went wrong");
+        }
+
+        return;
+      }
+
+      const result = await createQuestion(data);
+
+      if (result.success) {
+        toast.success("Question created successfully");
+
+        if (result.data) router.push(ROUTES.QUESTION(result.data._id));
+      } else {
+        toast.error(result.error?.message || "Something went wrong");
+      }
+    });
+  };
+
   return (
     <Form {...form}>
       <form
@@ -127,60 +178,59 @@ const QuestionForm = () => {
         <FormField
           control={form.control}
           name="tags"
-          render={({ field }) => {
-            const tags = field.value ?? [];
-            return (
-              <FormItem className="flex w-full flex-col gap-3">
-                <FormLabel className="paragraph-semibold text-dark400_light800">
-                  Tags <span className="text-primary-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <div>
-                    <Input
-                      className="paragraph-regular background-light700_dark300 light-border-2 text-dark300_light700 no-focus min-h-[56px] border"
-                      placeholder="Add tags..."
-                      onKeyDown={(e) => handleInputKeyDown(e, field)}
-                    />
-                    {tags.length > 0 && (
-                      <div className="flex-start mt-2.5 flex-wrap gap-2.5">
-                        {tags.map((tag) => (
-                          <div
-                            key={tag}
-                            className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          render={({ field }) => (
+            <FormItem className="flex w-full flex-col gap-3">
+              <FormLabel className="paragraph-semibold text-dark400_light800">
+                Tags <span className="text-primary-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <div>
+                  <Input
+                    className="paragraph-regular background-light700_dark300 light-border-2 text-dark300_light700 no-focus min-h-[56px] border"
+                    placeholder="Add tags..."
+                    onKeyDown={(e) => handleInputKeyDown(e, field)}
+                  />
+                  {field.value.length > 0 && (
+                    <div className="flex-start mt-2.5 flex-wrap gap-2.5">
+                      {field?.value?.map((tag: string) => (
+                        <div key={tag} className="flex items-center gap-2">
+                          <TagCard _id={tag} name={tag} compact />
+                          <button
+                            type="button"
+                            onClick={() => handleTagRemove(tag, field)}
+                            className="text-dark500_light500 hover:text-primary-500"
                           >
-                            <span className="uppercase tracking-widest">
-                              {tag}
-                            </span>
-                            <button
-                              type="button"
-                              aria-label={`Remove ${tag}`}
-                              className="flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-xs text-slate-500 transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline-none focus-visible:ring focus-visible:ring-slate-300 focus-visible:ring-offset-1 dark:text-slate-200"
-                              onClick={() => handleTagRemove(tag, field)}
-                            >
-                              x
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormDescription className="body-regular mt-2.5 text-light-500">
-                  Add up to 3 tags to describe what your question is about. You
-                  need to press enter to add a tag.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </FormControl>
+              <FormDescription className="body-regular mt-2.5 text-light-500">
+                Add up to 3 tags to describe what your question is about. You
+                need to press enter to add a tag.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
 
         <div className="mt-16 flex justify-end">
           <Button
             type="submit"
+            disabled={isPending}
             className="primary-gradient w-fit !text-light-900"
           >
-            Ask A Question
+            {isPending ? (
+              <>
+                <ReloadIcon className="mr-2 size-4 animate-spin" />
+                <span>Submitting</span>
+              </>
+            ) : (
+              <>{isEdit ? "Edit" : "Ask a Question"}</>
+            )}
           </Button>
         </div>
       </form>
